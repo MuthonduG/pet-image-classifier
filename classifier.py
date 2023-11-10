@@ -3,6 +3,10 @@ from tensorflow import keras
 from keras.layers import Conv2D, MaxPool2D
 import numpy as np
 import matplotlib.pyplot as plt
+import tensorflow as tf
+
+# set seed
+tf.random.set_seed(0)
 
 img_path = cv2.imread("./assets/d1.jpg")
 img_path = cv2.resize(img_path, (224, 224))
