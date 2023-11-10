@@ -23,6 +23,25 @@ model.add(MaxPool2D((2, 2), strides=(2, 2)))
 # Block2
 model.add(Conv2D(128, kernel_size=(3, 3), padding="same", activation="relu"))
 model.add(Conv2D(128, kernel_size=(3, 3), padding="same", activation="relu"))
+model.add(MaxPool2D((2, 2), strides=(2, 2)))
+
+# Block3
+model.add(Conv2D(256, kernel_size=(3, 3), padding="same", activation="relu"))
+model.add(Conv2D(256, kernel_size=(3, 3), padding="same", activation="relu"))
+model.add(Conv2D(256, kernel_size=(3, 3), padding="same", activation="relu"))
+model.add(MaxPool2D((2, 2), strides=(2, 2)))
+
+# Block4
+model.add(Conv2D(512, kernel_size=(3, 3), padding="same", activation="relu"))
+model.add(Conv2D(512, kernel_size=(3, 3), padding="same", activation="relu"))
+model.add(Conv2D(512, kernel_size=(3, 3), padding="same", activation="relu"))
+model.add(MaxPool2D((2, 2), strides=(2, 2)))
+
+# Block5
+model.add(Conv2D(512, kernel_size=(3, 3), padding="same", activation="relu"))
+model.add(Conv2D(512, kernel_size=(3, 3), padding="same", activation="relu"))
+model.add(Conv2D(512, kernel_size=(3, 3), padding="same", activation="relu"))
+model.add(MaxPool2D((2, 2), strides=(2, 2)))
 
 model.build()
 model.summary()
