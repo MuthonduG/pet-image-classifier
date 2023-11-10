@@ -1,9 +1,8 @@
 import ast
 from PIL import Image
 import torchvision.transforms as transforms
-from torch.autograd import Variable
 import torchvision.models as models
-from torch import __version__
+import torch
 
 resnet18 = models.resnet18(pretrained=True)
 alexnet = models.alexnet(pretrained=True)
@@ -15,7 +14,11 @@ models = {'resnet': resnet18, 'alexnet': alexnet, 'vgg': vgg16}
 with open('imagenet1000_clsid_to_human.txt') as imagenet_classes_file:
     imagenet_classes_dict = ast.literal_eval(imagenet_classes_file.read())
 
-def classify_image(img_path, model_name):
+def read_dog_classes(file_path):
+    with open(file_path, 'r') as file:
+        print([line.strip().lower() for line in file])
+
+def classify_image(img_path, model_name, dog_classes_file):
     # Load the image
     img_pil = Image.open(img_path)
 
@@ -46,8 +49,11 @@ def classify_image(img_path, model_name):
     # Return index corresponding to predicted class
     pred_idx = output.data.numpy().argmax()
 
-    # Check if the predicted class corresponds to a dog
-    if 'dog' in imagenet_classes_dict[pred_idx].lower():
+    # Check if the predicted class corresponds to a dog-related class
+    dog_classes = read_dog_classes(dog_classes_file)
+    predicted_label = imagenet_classes_dict[pred_idx].lower()
+
+    if any(dog_class in predicted_label for dog_class in dog_classes):
         print("Dog")
     else:
         print("Not a Dog")
@@ -55,4 +61,5 @@ def classify_image(img_path, model_name):
 # Example usage
 img_path = "path/to/your/image.jpg"
 model_name = 'resnet'  # You can change this to 'alexnet' or 'vgg'
-classify_image(img_path, model_name)
+dog_classes_file = "dogs.txt"
+classify_image(img_path, model_name, dog_classes_file)
