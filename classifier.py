@@ -1,69 +1,74 @@
 import ast
 from PIL import Image
-import torch
 import torchvision.transforms as transforms
+from torch.autograd import Variable
 import torchvision.models as models
+from torch import __version__
 
-class DogClassifier:
-    def __init__(self, model_name, dog_classes_file):
-        self.model = self.load_pretrained_model(model_name)
-        self.imagenet_classes_dict = self.load_imagenet_classes()
-        self.dog_classes = self.read_dog_classes(dog_classes_file)
-        self.transform = self.create_transform()
+resnet18 = models.resnet18(pretrained=True)
+alexnet = models.alexnet(pretrained=True)
+vgg16 = models.vgg16(pretrained=True)
 
-    def load_pretrained_model(self, model_name):
-        model = getattr(models, model_name)(pretrained=True)
-        model.eval()
-        return model
+models = {'resnet': resnet18, 'alexnet': alexnet, 'vgg': vgg16}
 
-    def load_imagenet_classes(self):
-        with open('imagenet1000_clsid_to_human.txt') as imagenet_classes_file:
-            return ast.literal_eval(imagenet_classes_file.read())
+# obtain ImageNet labels
+with open('imagenet1000_clsid_to_human.txt') as imagenet_classes_file:
+    imagenet_classes_dict = ast.literal_eval(imagenet_classes_file.read())
 
-    def read_dog_classes(self, file_path):
-        with open(file_path, 'r') as file:
-            return [line.strip().lower() for line in file]
+def classifier(img_path, model_name):
+    # load the image
+    img_pil = Image.open(img_path)
 
-    def create_transform(self):
-        return transforms.Compose([
-            transforms.Resize(256),
-            transforms.CenterCrop(224),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-        ])
+    # define transforms
+    preprocess = transforms.Compose([
+        transforms.Resize(256),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    ])
+    
+    # preprocess the image
+    img_tensor = preprocess(img_pil)
+    
+    # resize the tensor (add dimension for batch)
+    img_tensor.unsqueeze_(0)
+    
+    # wrap input in variable, wrap input in variable - no longer needed for
+    # v 0.4 & higher code changed 04/26/2018 by Jennifer S. to handle PyTorch upgrade
+    pytorch_ver = __version__.split('.')
+    
+    # pytorch versions 0.4 & hihger - Variable depreciated so that it returns
+    # a tensor. So to address tensor as output (not wrapper) and to mimic the 
+    # affect of setting volatile = True (because we are using pretrained models
+    # for inference) we can set requires_gradient to False. Here we just set 
+    # requires_grad_ to False on our tensor 
+    if int(pytorch_ver[0]) > 0 or int(pytorch_ver[1]) >= 4:
+        img_tensor.requires_grad_(False)
+    
+    # pytorch versions less than 0.4 - uses Variable because not-depreciated
+    else:
+        # apply model to input
+        # wrap input in variable
+        data = Variable(img_tensor, volatile = True) 
 
-    def classify_image(self, img_path):
-        img_pil = Image.open(img_path)
-        img_tensor = self.transform(img_pil)
-        img_tensor.unsqueeze_(0)
+    # apply model to input
+    model = models[model_name]
 
-        with torch.no_grad():
-            output = self.model(img_tensor)
+    # puts model in evaluation mode
+    # instead of (default)training mode
+    model = model.eval()
+    
+    # apply data to model - adjusted based upon version to account for 
+    # operating on a Tensor for version 0.4 & higher.
+    if int(pytorch_ver[0]) > 0 or int(pytorch_ver[1]) >= 4:
+        output = model(img_tensor)
 
-        pred_idx = output.data.numpy().argmax()
-        predicted_label = self.imagenet_classes_dict[pred_idx].lower()
+    # pytorch versions less than 0.4
+    else:
+        # apply data to model
+        output = model(data)
 
-        if any(dog_class in predicted_label for dog_class in self.dog_classes):
-            return "Dog"
-        else:
-            return "Not a Dog"
+    # return index corresponding to predicted class
+    pred_idx = output.data.numpy().argmax()
 
-class CustomDogClassifier(DogClassifier):
-    def __init__(self, model_name, dog_classes_file, additional_dog_classes=None):
-        super().__init__(model_name, dog_classes_file)
-        
-        if additional_dog_classes is not None:
-            self.dog_classes.extend(additional_dog_classes)
-
-    def classify_image_from_path(self, img_path):
-        result = self.classify_image(img_path)
-        print(result)
-
-# Example usage
-model_name = 'resnet'  # You can change this to 'alexnet' or 'vgg'
-dog_classes_file = "./dogs.txt"
-additional_dog_classes = ["your_additional_dog_class"]
-
-custom_dog_classifier = CustomDogClassifier(model_name, dog_classes_file, additional_dog_classes)
-img_path = "./assets/dogs/d1.jpg"
-custom_dog_classifier.classify_image_from_path(img_path)
+    return imagenet_classes_dict[pred_idx]
